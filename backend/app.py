@@ -27,7 +27,7 @@ def create_app(config_class=Config):
     # ── Extensions ────────────────────────────────────────
     db.init_app(app)
     JWTManager(app)
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, origins="*", allow_headers=["Content-Type", "Authorization"], methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
     # ── Register Blueprints ────────────────────────────────
     from routes.auth        import auth_bp
@@ -83,7 +83,14 @@ def create_app(config_class=Config):
         db.session.rollback()
         return jsonify({"error": "Internal server error"}), 500
 
+    from flask import render_template
+
+    @app.route('/')
+    def serve_frontend():
+        return render_template('index.html')
+
     return app
+
 
 
 # ── Entry point ────────────────────────────────────────────
