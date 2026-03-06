@@ -54,34 +54,18 @@ def create_app(config_class=Config):
         print("[PhytoSense] Database tables ready")
 
     # ── Health check endpoint ──────────────────────────────
-    @app.route("/api/health")
-    def health():
-        return jsonify({
-            "status":  "ok",
-            "service": "PhytoSense API v1.0",
-            "docs":    "/api/health",
-        }), 200
 
-    # ── 404 handler ────────────────────────────────────────
-    @app.errorhandler(404)
-    def not_found(e):
-        return jsonify({"error": "Endpoint not found"}), 404
+    from flask import render_template
 
-    # ── 405 handler ────────────────────────────────────────
-    @app.errorhandler(405)
-    def method_not_allowed(e):
-        return jsonify({"error": "Method not allowed"}), 405
 
-    # ── 413 handler ────────────────────────────────────────
-    @app.errorhandler(413)
-    def file_too_large(e):
-        return jsonify({"error": "File too large. Maximum size is 10 MB"}), 413
+    from flask import render_template
 
-    # ── 500 handler ────────────────────────────────────────
-    @app.errorhandler(500)
-    def internal_error(e):
-        db.session.rollback()
-        return jsonify({"error": "Internal server error"}), 500
+
+    from flask import render_template
+
+
+    from flask import render_template
+
 
     from flask import render_template
 
@@ -90,6 +74,10 @@ def create_app(config_class=Config):
         return render_template('index.html')
 
     return app
+
+
+
+
 
 
 
