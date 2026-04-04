@@ -33,7 +33,7 @@ class Config:
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "bmp"}
 
     # ── ML Model ───────────────────────────────────────────
-    MODEL_PATH       = os.path.join(BASE_DIR, "..", "model", "plant_cnn.h5")
+    MODEL_PATH       = os.path.join(BASE_DIR, "..", "model", "plant_cnn_full.h5")
     CLASS_NAMES_PATH = os.path.join(BASE_DIR, "..", "model", "class_names.json")
     IMG_SIZE         = (224, 224)
 
