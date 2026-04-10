@@ -1,0 +1,2276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhytoSense — Plant Disease Detection</title>
+<style>
+:root {
+  --green-dark:   #1a3a1a;
+  --green-mid:    #2d5a2d;
+  --green-light:  #4a8c4a;
+  --green-accent: #6abf69;
+  --green-glow:   #a8d5a2;
+  --bg-dark:      #0d1f0d;
+  --bg-card:      #152415;
+  --bg-card2:     #1c301c;
+  --text-primary: #e8f5e9;
+  --text-muted:   #a5c8a5;
+  --border:       #2d5a2d;
+  --danger:       #e53935;
+  --warning:      #fb8c00;
+  --info:         #1e88e5;
+  --white:        #ffffff;
+  --shadow:       0 4px 24px rgba(0,0,0,0.5);
+  --radius:       12px;
+  --radius-lg:    20px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg-dark); }
+::-webkit-scrollbar-thumb { background:var(--green-mid); border-radius:3px; }
+
+/* ── Layout ── */
+.app { display:flex; min-height:100vh; }
+.sidebar {
+  width:260px; min-height:100vh;
+  background:var(--bg-card);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  position:fixed; left:0; top:0; bottom:0;
+  z-index:100; transition:transform 0.3s;
+}
+.main-content {
+  margin-left:260px;
+  flex:1; min-height:100vh;
+  background:var(--bg-dark);
+}
+
+/* ── Sidebar ── */
+.sidebar-logo {
+  padding:28px 20px 20px;
+  border-bottom:1px solid var(--border);
+}
+.logo-icon {
+  width:44px; height:44px;
+  background:linear-gradient(135deg, var(--green-light), var(--green-accent));
+  border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; margin-bottom:10px;
+  box-shadow:0 0 20px rgba(106,191,105,0.3);
+}
+.logo-text { font-size:20px; font-weight:700; color:var(--text-primary); }
+.logo-sub  { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+.sidebar-nav { flex:1; padding:16px 0; overflow-y:auto; }
+.nav-section { padding:8px 20px 4px; }
+.nav-section-label {
+  font-size:10px; font-weight:600; letter-spacing:1.5px;
+  color:var(--text-muted); text-transform:uppercase;
+}
+.nav-item {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 20px; margin:2px 8px;
+  border-radius:10px; cursor:pointer;
+  color:var(--text-muted); font-size:14px;
+  transition:all 0.2s; position:relative;
+  text-decoration:none;
+}
+.nav-item:hover { background:var(--bg-card2); color:var(--text-primary); }
+.nav-item.active {
+  background:linear-gradient(135deg, var(--green-mid), var(--green-light));
+  color:white;
+  box-shadow:0 2px 12px rgba(74,140,74,0.4);
+}
+.nav-item .nav-icon { font-size:18px; width:22px; text-align:center; }
+.nav-badge {
+  margin-left:auto; background:var(--green-accent);
+  color:var(--bg-dark); font-size:10px; font-weight:700;
+  padding:2px 7px; border-radius:20px;
+}
+
+.sidebar-user {
+  padding:16px 20px;
+  border-top:1px solid var(--border);
+}
+.user-avatar {
+  width:38px; height:38px; border-radius:50%;
+  background:linear-gradient(135deg, var(--green-light), var(--green-accent));
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:15px; color:white;
+  flex-shrink:0;
+}
+.user-info { display:flex; align-items:center; gap:10px; }
+.user-name  { font-size:13px; font-weight:600; }
+.user-email { font-size:11px; color:var(--text-muted); }
+
+/* ── Topbar ── */
+.topbar {
+  height:64px; background:var(--bg-card);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center;
+  padding:0 28px; gap:16px;
+  position:sticky; top:0; z-index:50;
+}
+.topbar-title { font-size:18px; font-weight:600; flex:1; }
+.topbar-actions { display:flex; align-items:center; gap:12px; }
+.btn-icon {
+  width:38px; height:38px; border-radius:10px;
+  background:var(--bg-card2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:18px; color:var(--text-muted);
+  transition:all 0.2s;
+}
+.btn-icon:hover { border-color:var(--green-accent); color:var(--green-accent); }
+
+/* ── Pages ── */
+.page { display:none; padding:28px; max-width:1200px; margin:0 auto; }
+.page.active { display:block; }
+
+/* ── Auth Pages ── */
+.auth-page {
+  min-height:100vh; display:flex;
+  align-items:center; justify-content:center;
+  background:radial-gradient(ellipse at 30% 50%, rgba(45,90,45,0.3) 0%, transparent 60%),
+             radial-gradient(ellipse at 70% 80%, rgba(26,58,26,0.4) 0%, transparent 60%),
+             var(--bg-dark);
+  padding:20px;
+}
+.auth-card {
+  width:100%; max-width:440px;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:40px;
+  box-shadow:var(--shadow);
+}
+.auth-logo {
+  text-align:center; margin-bottom:32px;
+}
+.auth-logo-icon {
+  width:64px; height:64px;
+  background:linear-gradient(135deg, var(--green-light), var(--green-accent));
+  border-radius:18px; margin:0 auto 12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px;
+  box-shadow:0 0 40px rgba(106,191,105,0.4);
+}
+.auth-title { font-size:24px; font-weight:700; margin-bottom:4px; }
+.auth-sub   { font-size:14px; color:var(--text-muted); }
+
+/* ── Form elements ── */
+.form-group { margin-bottom:18px; }
+.form-label {
+  display:block; font-size:13px; font-weight:500;
+  color:var(--text-muted); margin-bottom:6px;
+}
+.form-control {
+  width:100%; padding:11px 14px;
+  background:var(--bg-dark); border:1px solid var(--border);
+  border-radius:10px; color:var(--text-primary);
+  font-size:14px; transition:border 0.2s;
+  outline:none;
+}
+.form-control:focus { border-color:var(--green-accent); }
+.form-control::placeholder { color:var(--text-muted); opacity:0.6; }
+select.form-control option { background:var(--bg-dark); }
+
+/* ── Buttons ── */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:8px; padding:11px 22px;
+  border-radius:10px; font-size:14px; font-weight:600;
+  cursor:pointer; transition:all 0.2s; border:none;
+  text-decoration:none;
+}
+.btn-primary {
+  background:linear-gradient(135deg, var(--green-light), var(--green-accent));
+  color:white;
+  box-shadow:0 2px 12px rgba(74,140,74,0.4);
+}
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(74,140,74,0.5); }
+.btn-outline {
+  background:transparent; border:1px solid var(--border);
+  color:var(--text-muted);
+}
+.btn-outline:hover { border-color:var(--green-accent); color:var(--green-accent); }
+.btn-danger {
+  background:var(--danger); color:white;
+}
+.btn-full { width:100%; }
+.btn-sm { padding:7px 14px; font-size:12px; }
+
+/* ── Cards ── */
+.card {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:22px;
+}
+.card-title {
+  font-size:15px; font-weight:600;
+  margin-bottom:16px; color:var(--text-primary);
+  display:flex; align-items:center; gap:8px;
+}
+
+/* ── Stats grid ── */
+.stats-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+  gap:16px; margin-bottom:24px;
+}
+.stat-card {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px;
+  transition:transform 0.2s;
+}
+.stat-card:hover { transform:translateY(-2px); }
+.stat-icon {
+  width:44px; height:44px; border-radius:12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; margin-bottom:12px;
+}
+.stat-value { font-size:28px; font-weight:700; line-height:1; }
+.stat-label { font-size:13px; color:var(--text-muted); margin-top:4px; }
+.stat-change { font-size:12px; margin-top:6px; }
+
+/* ── Grid layouts ── */
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  border:2px dashed var(--border);
+  border-radius:var(--radius-lg);
+  padding:60px 40px;
+  text-align:center;
+  cursor:pointer; transition:all 0.3s;
+  background:var(--bg-card);
+  position:relative;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color:var(--green-accent);
+  background:rgba(74,140,74,0.05);
+}
+.upload-icon { font-size:56px; margin-bottom:16px; }
+.upload-title { font-size:20px; font-weight:600; margin-bottom:8px; }
+.upload-sub   { font-size:14px; color:var(--text-muted); }
+#file-input   { display:none; }
+
+/* ── Result card ── */
+.result-card {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:24px;
+  margin-top:24px;
+  display:none;
+}
+.result-card.show { display:block; }
+.result-header {
+  display:flex; align-items:center; gap:16px;
+  margin-bottom:20px;
+}
+.result-image {
+  width:120px; height:120px; border-radius:12px;
+  object-fit:cover; border:2px solid var(--border);
+}
+.result-disease { font-size:22px; font-weight:700; }
+.result-crop    { font-size:14px; color:var(--text-muted); margin-top:4px; }
+.confidence-bar {
+  height:8px; background:var(--bg-dark);
+  border-radius:4px; margin-top:10px; overflow:hidden;
+}
+.confidence-fill {
+  height:100%; border-radius:4px;
+  background:linear-gradient(90deg, var(--green-light), var(--green-accent));
+  transition:width 1s ease;
+}
+.severity-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:20px;
+  font-size:12px; font-weight:600; margin-top:8px;
+}
+.severity-high    { background:rgba(229,57,53,0.2);  color:#ef9a9a; }
+.severity-medium  { background:rgba(251,140,0,0.2);  color:#ffcc80; }
+.severity-low     { background:rgba(251,192,45,0.2); color:#fff176; }
+.severity-healthy { background:rgba(76,175,80,0.2);  color:#a5d6a7; }
+
+.treatment-tabs {
+  display:flex; gap:8px; margin-bottom:16px;
+  border-bottom:1px solid var(--border); padding-bottom:8px;
+}
+.treatment-tab {
+  padding:8px 16px; border-radius:8px; cursor:pointer;
+  font-size:13px; font-weight:500; color:var(--text-muted);
+  transition:all 0.2s;
+}
+.treatment-tab.active {
+  background:var(--green-mid); color:white;
+}
+.treatment-content { display:none; }
+.treatment-content.active { display:block; }
+.treatment-content p { font-size:14px; line-height:1.7; color:var(--text-muted); }
+.symptoms-list { list-style:none; }
+.symptoms-list li {
+  padding:8px 0; border-bottom:1px solid var(--border);
+  font-size:14px; display:flex; align-items:flex-start; gap:8px;
+  color:var(--text-muted);
+}
+.symptoms-list li::before { content:'⚠️'; font-size:12px; margin-top:1px; }
+
+/* ── Weather ── */
+.weather-hero {
+  background:linear-gradient(135deg, var(--bg-card), var(--bg-card2));
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:32px; margin-bottom:24px;
+  position:relative; overflow:hidden;
+}
+.weather-hero::before {
+  content:''; position:absolute; top:-40px; right:-40px;
+  width:200px; height:200px; border-radius:50%;
+  background:radial-gradient(circle, rgba(106,191,105,0.1), transparent 70%);
+}
+.weather-temp { font-size:64px; font-weight:300; line-height:1; }
+.weather-desc { font-size:18px; color:var(--text-muted); margin-top:4px; }
+.weather-stats {
+  display:flex; gap:24px; margin-top:20px;
+}
+.weather-stat { font-size:14px; color:var(--text-muted); }
+.weather-stat strong { color:var(--text-primary); display:block; font-size:18px; }
+
+.forecast-row {
+  display:grid; grid-template-columns:repeat(7, 1fr);
+  gap:10px; margin-top:20px;
+}
+.forecast-day {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:14px; text-align:center;
+}
+.forecast-day .day   { font-size:12px; color:var(--text-muted); font-weight:600; }
+.forecast-day .icon  { font-size:26px; margin:8px 0; }
+.forecast-day .temp  { font-size:14px; font-weight:600; }
+.forecast-day .rain  { font-size:11px; color:var(--info); margin-top:4px; }
+
+/* ── Risk meter ── */
+.risk-meter {
+  position:relative; height:12px;
+  background:linear-gradient(90deg, #388e3c, #fbc02d, #f57c00, #d32f2f);
+  border-radius:6px; margin:16px 0;
+}
+.risk-pointer {
+  position:absolute; top:-4px;
+  width:20px; height:20px; border-radius:50%;
+  background:white; border:3px solid var(--green-accent);
+  transform:translateX(-50%);
+  transition:left 1s ease;
+  box-shadow:0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ── Irrigation ── */
+.irrigation-day {
+  display:flex; align-items:center; gap:16px;
+  padding:14px; border-radius:10px;
+  background:var(--bg-card2);
+  margin-bottom:8px;
+}
+.irr-day-name { width:80px; font-weight:600; font-size:14px; }
+.irr-bar-wrap { flex:1; height:8px; background:var(--bg-dark); border-radius:4px; overflow:hidden; }
+.irr-bar      { height:100%; border-radius:4px;
+                background:linear-gradient(90deg, var(--green-light), var(--green-accent)); }
+.irr-volume   { width:80px; text-align:right; font-size:13px; color:var(--text-muted); }
+.irr-status   { width:90px; text-align:right; }
+
+/* ── History ── */
+.history-item {
+  display:flex; align-items:center; gap:16px;
+  padding:16px; border-radius:var(--radius);
+  background:var(--bg-card2); margin-bottom:10px;
+  transition:all 0.2s; cursor:pointer;
+}
+.history-item:hover { border-color:var(--green-accent); transform:translateX(2px); }
+.history-thumb {
+  width:60px; height:60px; border-radius:10px;
+  object-fit:cover; background:var(--bg-dark);
+  border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; flex-shrink:0;
+}
+.history-disease { font-size:15px; font-weight:600; }
+.history-meta    { font-size:12px; color:var(--text-muted); margin-top:3px; }
+.history-conf    { margin-left:auto; text-align:right; }
+.history-conf .pct { font-size:18px; font-weight:700; color:var(--green-accent); }
+
+/* ── Encyclopedia ── */
+.disease-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+  gap:16px;
+}
+.disease-card {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px; cursor:pointer;
+  transition:all 0.2s;
+}
+.disease-card:hover {
+  border-color:var(--green-accent);
+  transform:translateY(-2px);
+  box-shadow:0 4px 16px rgba(74,140,74,0.2);
+}
+.disease-card-crop { font-size:11px; color:var(--green-accent); font-weight:600; text-transform:uppercase; letter-spacing:1px; }
+.disease-card-name { font-size:15px; font-weight:600; margin:6px 0; }
+.disease-card-sci  { font-size:12px; color:var(--text-muted); font-style:italic; }
+
+/* ── Profile ── */
+.profile-header {
+  background:linear-gradient(135deg, var(--green-dark), var(--green-mid));
+  border-radius:var(--radius-lg);
+  padding:32px; margin-bottom:24px;
+  display:flex; align-items:center; gap:24px;
+}
+.profile-avatar {
+  width:80px; height:80px; border-radius:50%;
+  background:linear-gradient(135deg, var(--green-light), var(--green-accent));
+  display:flex; align-items:center; justify-content:center;
+  font-size:36px; font-weight:700; color:white;
+  border:4px solid rgba(255,255,255,0.2);
+  flex-shrink:0;
+}
+.profile-name  { font-size:24px; font-weight:700; }
+.profile-email { font-size:14px; color:var(--green-glow); margin-top:4px; }
+.profile-since { font-size:12px; color:var(--text-muted); margin-top:8px; }
+
+/* ── Modal ── */
+.modal-overlay {
+  display:none; position:fixed;
+  inset:0; background:rgba(0,0,0,0.7);
+  z-index:200; align-items:center; justify-content:center;
+  padding:20px;
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  padding:32px; width:100%; max-width:560px;
+  max-height:85vh; overflow-y:auto;
+}
+.modal-title {
+  font-size:20px; font-weight:700;
+  margin-bottom:20px; padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+
+/* ── Loading ── */
+.spinner {
+  width:40px; height:40px; border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--green-accent);
+  animation:spin 0.8s linear infinite;
+  margin:0 auto;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(13,31,13,0.85);
+  z-index:300; align-items:center;
+  justify-content:center; flex-direction:column; gap:16px;
+}
+.loading-overlay.show { display:flex; }
+.loading-text { font-size:16px; color:var(--green-accent); }
+
+/* ── Toast ── */
+.toast-container {
+  position:fixed; bottom:24px; right:24px;
+  z-index:400; display:flex;
+  flex-direction:column; gap:8px;
+}
+.toast {
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:12px; padding:14px 20px;
+  display:flex; align-items:center; gap:12px;
+  box-shadow:var(--shadow);
+  animation:slideIn 0.3s ease;
+  max-width:340px;
+}
+@keyframes slideIn {
+  from { transform:translateX(100px); opacity:0; }
+  to   { transform:translateX(0);      opacity:1; }
+}
+.toast.success { border-left:4px solid var(--green-accent); }
+.toast.error   { border-left:4px solid var(--danger); }
+.toast.info    { border-left:4px solid var(--info); }
+.toast-msg     { font-size:14px; }
+
+/* ── Camera ── */
+.camera-wrap {
+  position:relative;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+  margin-bottom:16px;
+}
+#camera-video {
+  width:100%; display:block;
+  border-radius:var(--radius-lg);
+  max-height:400px; object-fit:cover;
+}
+.camera-overlay {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+}
+.camera-reticle {
+  width:200px; height:200px;
+  border:2px solid var(--green-accent);
+  border-radius:12px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,0.3);
+}
+#camera-canvas { display:none; }
+
+/* ── Progress bar ── */
+.progress { height:6px; background:var(--bg-dark); border-radius:3px; overflow:hidden; }
+.progress-bar {
+  height:100%;
+  background:linear-gradient(90deg, var(--green-light), var(--green-accent));
+  border-radius:3px; transition:width 0.3s;
+}
+
+/* ── Responsive ── */
+@media (max-width:768px) {
+  .sidebar { transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); }
+  .main-content { margin-left:0; }
+  .grid-2, .grid-3 { grid-template-columns:1fr; }
+  .forecast-row { grid-template-columns:repeat(4, 1fr); }
+  .stats-grid { grid-template-columns:repeat(2, 1fr); }
+}
+
+/* ── Utility ── */
+.text-muted   { color:var(--text-muted); }
+.text-success { color:var(--green-accent); }
+.text-danger  { color:var(--danger); }
+.text-warning { color:var(--warning); }
+.text-center  { text-align:center; }
+.mt-1 { margin-top:8px; }
+.mt-2 { margin-top:16px; }
+.mt-3 { margin-top:24px; }
+.mb-1 { margin-bottom:8px; }
+.mb-2 { margin-bottom:16px; }
+.mb-3 { margin-bottom:24px; }
+.flex { display:flex; }
+.flex-center { display:flex; align-items:center; }
+.gap-2 { gap:16px; }
+.hidden { display:none !important; }
+.divider { height:1px; background:var(--border); margin:20px 0; }
+.page-header { margin-bottom:24px; }
+.page-header h1 { font-size:24px; font-weight:700; }
+.page-header p  { font-size:14px; color:var(--text-muted); margin-top:4px; }
+
+/* ── Chatbot ─────────────────────────────────────────── */
+#chat-fab {
+  position:fixed; bottom:28px; right:28px; z-index:1000;
+  width:56px; height:56px; border-radius:50%;
+  background:linear-gradient(135deg,var(--green-light),var(--green-accent));
+  border:none; cursor:pointer; font-size:24px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform 0.2s;
+}
+#chat-fab:hover { transform:scale(1.1); }
+#chat-window {
+  position:fixed; bottom:96px; right:28px; z-index:1000;
+  width:360px; height:500px;
+  background:#152415;
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:0 8px 40px rgba(0,0,0,0.7);
+  display:none; flex-direction:column;
+  overflow:hidden;
+}
+#chat-window.open { display:flex; }
+#chat-header {
+  background:linear-gradient(135deg,var(--green-mid),var(--green-light));
+  padding:14px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+}
+#chat-header-left { display:flex; align-items:center; gap:10px; }
+#chat-header-avatar {
+  width:36px; height:36px; border-radius:50%;
+  background:var(--green-accent);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+#chat-header-title { font-weight:700; font-size:14px; color:#fff; }
+#chat-header-sub { font-size:11px; color:rgba(255,255,255,0.75); }
+#chat-close {
+  background:none; border:none; color:#fff;
+  font-size:20px; cursor:pointer; padding:4px; line-height:1;
+}
+#chat-messages {
+  flex:1; overflow-y:auto; padding:14px;
+  display:flex; flex-direction:column; gap:10px;
+  background:#0d1f0d;
+}
+#chat-messages::-webkit-scrollbar { width:4px; }
+#chat-messages::-webkit-scrollbar-track { background:#0d1f0d; }
+#chat-messages::-webkit-scrollbar-thumb { background:var(--green-mid); border-radius:2px; }
+.chat-bubble {
+  max-width:85%; padding:10px 14px;
+  border-radius:16px; font-size:13px; line-height:1.5;
+  word-wrap:break-word;
+}
+.chat-bubble.bot {
+  background:#152415; border:1px solid var(--border);
+  color:var(--text-primary); align-self:flex-start;
+  border-bottom-left-radius:4px;
+}
+.chat-bubble.user {
+  background:linear-gradient(135deg,var(--green-mid),var(--green-light));
+  color:#fff; align-self:flex-end;
+  border-bottom-right-radius:4px;
+}
+.chat-bubble.typing {
+  background:#152415; border:1px solid var(--border);
+  color:var(--text-muted); align-self:flex-start;
+  font-style:italic;
+}
+#chat-input-row {
+  display:flex; gap:8px; padding:12px;
+  background:#152415; border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+#chat-input {
+  flex:1; background:#0d1f0d; border:1px solid var(--border);
+  border-radius:20px; padding:9px 14px;
+  color:var(--text-primary); font-size:13px; outline:none;
+  resize:none;
+}
+#chat-input:focus { border-color:var(--green-accent); }
+#chat-send {
+  width:38px; height:38px; border-radius:50%; flex-shrink:0;
+  background:linear-gradient(135deg,var(--green-light),var(--green-accent));
+  border:none; cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center;
+}
+#chat-send:hover { opacity:0.85; }
+.chat-suggestions {
+  display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;
+}
+.chat-suggestion {
+  background:#1c301c; border:1px solid var(--border);
+  color:var(--green-glow); font-size:11px; padding:4px 10px;
+  border-radius:12px; cursor:pointer; white-space:nowrap;
+}
+.chat-suggestion:hover { background:var(--green-mid); color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LOADING OVERLAY
+══════════════════════════════════════════════ -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Analysing leaf...</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     TOAST CONTAINER
+══════════════════════════════════════════════ -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════
+     AUTH — LOGIN PAGE
+══════════════════════════════════════════════ -->
+<div id="auth-section">
+<div class="auth-page" id="login-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🌿</div>
+      <div class="auth-title">PhytoSense</div>
+      <div class="auth-sub">AI-powered plant disease detection</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-control" id="login-email" placeholder="farmer@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">
+      <span>🔐</span> Sign In
+    </button>
+    <div class="divider"></div>
+    <p class="text-center text-muted" style="font-size:14px;">
+      Don't have an account?
+      <a href="#" onclick="showPage('register-page')" style="color:var(--green-accent);">Create one</a>
+    </p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     AUTH — REGISTER PAGE
+══════════════════════════════════════════════ -->
+<div class="auth-page hidden" id="register-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🌱</div>
+      <div class="auth-title">Create Account</div>
+      <div class="auth-sub">Join PhytoSense and protect your crops</div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-control" id="reg-name" placeholder="Rajesh Kumar">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" class="form-control" id="reg-phone" placeholder="+91 9876543210">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-control" id="reg-email" placeholder="farmer@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-control" id="reg-password" placeholder="Min. 6 characters">
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Primary Crop</label>
+        <select class="form-control" id="reg-crop">
+          <option>Tomato</option><option>Potato</option><option>Corn</option>
+          <option>Pepper</option><option>Apple</option><option>Grape</option>
+          <option>Soybean</option><option>Wheat</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Farm Area (hectares)</label>
+        <input type="number" class="form-control" id="reg-area" placeholder="1.5" step="0.1" min="0.1">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doRegister()">
+      <span>🌱</span> Create Account
+    </button>
+    <div class="divider"></div>
+    <p class="text-center text-muted" style="font-size:14px;">
+      Already have an account?
+      <a href="#" onclick="showPage('login-page')" style="color:var(--green-accent);">Sign in</a>
+    </p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     MAIN APP (shown after login)
+══════════════════════════════════════════════ -->
+<div class="app hidden" id="app-section">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🌿</div>
+      <div class="logo-text">PhytoSense</div>
+      <div class="logo-sub">Plant Disease AI Platform</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-section-label">Main</div>
+      </div>
+      <div class="nav-item active" onclick="navigateTo('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="navigateTo('scanner')">
+        <span class="nav-icon">🔬</span> Leaf Scanner
+      </div>
+      <div class="nav-item" onclick="navigateTo('camera')">
+        <span class="nav-icon">📷</span> Camera Scan
+      </div>
+      <div class="nav-item" onclick="navigateTo('history')">
+        <span class="nav-icon">📋</span> Scan History
+        <span class="nav-badge" id="history-badge">0</span>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Farm Intelligence</div>
+      </div>
+      <div class="nav-item" onclick="navigateTo('weather')">
+        <span class="nav-icon">🌤️</span> Climate & Risk
+      </div>
+      <div class="nav-item" onclick="navigateTo('irrigation')">
+        <span class="nav-icon">💧</span> Irrigation Plan
+      </div>
+      <div class="nav-item" onclick="navigateTo('crop-health')">
+        <span class="nav-icon">🌾</span> Crop Health
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Knowledge</div>
+      </div>
+      <div class="nav-item" onclick="navigateTo('encyclopedia')">
+        <span class="nav-icon">📚</span> Encyclopedia
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Account</div>
+      </div>
+      <div class="nav-item" onclick="navigateTo('profile')">
+        <span class="nav-icon">👤</span> Profile & Farm
+      </div>
+      <div class="nav-item" onclick="doLogout()">
+        <span class="nav-icon">🚪</span> Sign Out
+      </div>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">F</div>
+        <div>
+          <div class="user-name"  id="sidebar-name">Farmer</div>
+          <div class="user-email" id="sidebar-email">loading...</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <div class="btn-icon" title="Notifications">🔔</div>
+        <div class="btn-icon" title="Settings" onclick="navigateTo('profile')">⚙️</div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: DASHBOARD
+    ───────────────────────────────────────── -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1>Good morning, <span id="dash-name">Farmer</span> 👋</h1>
+        <p>Here's your farm intelligence summary for today</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(74,140,74,0.2);">🔬</div>
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total Scans</div>
+          <div class="stat-change text-muted" id="stat-month">0 this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(76,175,80,0.2);">✅</div>
+          <div class="stat-value text-success" id="stat-healthy">0%</div>
+          <div class="stat-label">Health Rate</div>
+          <div class="stat-change text-muted">Last 30 scans</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(229,57,53,0.2);">⚠️</div>
+          <div class="stat-value text-danger" id="stat-diseased">0</div>
+          <div class="stat-label">Diseases Detected</div>
+          <div class="stat-change text-muted" id="stat-top-disease">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(30,136,229,0.2);">🎯</div>
+          <div class="stat-value" id="stat-conf">0%</div>
+          <div class="stat-label">Avg Confidence</div>
+          <div class="stat-change text-muted">CNN accuracy</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">🌡️ Current Conditions</div>
+          <div id="dash-weather-content">
+            <div class="text-center text-muted" style="padding:20px;">Loading weather...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🦠 Disease Risk Index</div>
+          <div id="dash-risk-content">
+            <div class="text-center text-muted" style="padding:20px;">Loading risk data...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-title">📋 Recent Scans</div>
+        <div id="dash-recent-scans">
+          <div class="text-center text-muted" style="padding:30px;">No scans yet. Start by scanning a leaf!</div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-outline btn-sm" onclick="navigateTo('scanner')">
+            🔬 New Scan
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="navigateTo('history')" style="margin-left:8px;">
+            📋 View All
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: SCANNER
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-scanner">
+      <div class="page-header">
+        <h1>🔬 Leaf Disease Scanner</h1>
+        <p>Upload a clear photo of a plant leaf for AI-powered disease detection</p>
+      </div>
+
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+        <div class="upload-icon">🍃</div>
+        <div class="upload-title">Drop leaf image here</div>
+        <div class="upload-sub">or click to browse — JPG, PNG, WEBP supported (max 10 MB)</div>
+        <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+      </div>
+
+      <div id="image-preview-wrap" class="hidden" style="margin-top:16px;">
+        <img id="image-preview" style="max-width:100%;max-height:300px;border-radius:12px;border:1px solid var(--border);">
+        <div class="mt-2 flex gap-2">
+          <button class="btn btn-primary" onclick="runScan()">
+            <span>🔍</span> Analyse Leaf
+          </button>
+          <button class="btn btn-outline" onclick="clearScan()">
+            <span>✕</span> Clear
+          </button>
+        </div>
+      </div>
+
+      <div class="result-card" id="result-card">
+        <div class="result-header">
+          <img id="result-image" class="result-image" src="" alt="Scanned leaf">
+          <div style="flex:1;">
+            <div class="result-disease" id="result-disease">—</div>
+            <div class="result-crop"    id="result-crop">—</div>
+            <div class="severity-badge" id="result-severity">—</div>
+            <div class="confidence-bar">
+              <div class="confidence-fill" id="conf-fill" style="width:0%"></div>
+            </div>
+            <div class="text-muted mt-1" style="font-size:12px;" id="result-conf-text">Confidence: —</div>
+          </div>
+        </div>
+
+        <div class="treatment-tabs">
+          <div class="treatment-tab active" onclick="switchTab('symptoms')">🔍 Symptoms</div>
+          <div class="treatment-tab" onclick="switchTab('organic')">🌿 Organic</div>
+          <div class="treatment-tab" onclick="switchTab('chemical')">🧪 Chemical</div>
+          <div class="treatment-tab" onclick="switchTab('prevention')">🛡️ Prevention</div>
+        </div>
+
+        <div class="treatment-content active" id="tab-symptoms">
+          <ul class="symptoms-list" id="symptoms-list"></ul>
+        </div>
+        <div class="treatment-content" id="tab-organic">
+          <p id="organic-text">—</p>
+        </div>
+        <div class="treatment-content" id="tab-chemical">
+          <p id="chemical-text">—</p>
+        </div>
+        <div class="treatment-content" id="tab-prevention">
+          <p id="prevention-text">—</p>
+        </div>
+
+        <div class="divider"></div>
+        <div class="card-title">🏆 Top Predictions</div>
+        <div id="top3-list"></div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: CAMERA SCAN
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-camera">
+      <div class="page-header">
+        <h1>📷 Live Camera Scan</h1>
+        <p>Point your camera at a leaf and capture for instant disease detection</p>
+      </div>
+
+      <div class="camera-wrap">
+        <video id="camera-video" autoplay playsinline></video>
+        <div class="camera-overlay">
+          <div class="camera-reticle"></div>
+        </div>
+        <canvas id="camera-canvas"></canvas>
+      </div>
+
+      <div class="flex gap-2 mb-3">
+        <button class="btn btn-primary" id="start-camera-btn" onclick="startCamera()">
+          📷 Start Camera
+        </button>
+        <button class="btn btn-outline hidden" id="capture-btn" onclick="captureAndScan()">
+          🔍 Capture & Analyse
+        </button>
+        <button class="btn btn-outline hidden" id="stop-camera-btn" onclick="stopCamera()">
+          ⏹ Stop
+        </button>
+      </div>
+
+      <div class="result-card" id="camera-result-card">
+        <div class="result-header">
+          <img id="camera-result-image" class="result-image" src="" alt="">
+          <div style="flex:1;">
+            <div class="result-disease" id="camera-result-disease">—</div>
+            <div class="result-crop"    id="camera-result-crop">—</div>
+            <div class="severity-badge" id="camera-result-severity">—</div>
+            <div class="confidence-bar">
+              <div class="confidence-fill" id="camera-conf-fill" style="width:0%"></div>
+            </div>
+            <div class="text-muted mt-1" style="font-size:12px;" id="camera-conf-text">—</div>
+          </div>
+        </div>
+        <div id="camera-treatment" class="text-muted" style="font-size:14px;line-height:1.7;"></div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: HISTORY
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-history">
+      <div class="page-header">
+        <h1>📋 Scan History</h1>
+        <p>All your previous disease detections with treatment records</p>
+      </div>
+
+      <div class="card mb-3">
+        <div class="flex gap-2" style="flex-wrap:wrap;">
+          <select class="form-control" id="filter-crop" style="width:150px;" onchange="loadHistory()">
+            <option value="">All Crops</option>
+            <option>Tomato</option><option>Potato</option><option>Corn</option>
+            <option>Apple</option><option>Grape</option><option>Pepper</option>
+          </select>
+          <select class="form-control" id="filter-severity" style="width:150px;" onchange="loadHistory()">
+            <option value="">All Severity</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="healthy">Healthy</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadHistory()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <div id="history-list">
+        <div class="text-center text-muted" style="padding:40px;">Loading scan history...</div>
+      </div>
+
+      <div class="flex-center gap-2 mt-2" id="pagination-wrap" style="justify-content:center;"></div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: WEATHER
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-weather">
+      <div class="page-header">
+        <h1>🌤️ Climate & Disease Risk</h1>
+        <p>Real-time weather and outbreak risk monitoring powered by OpenWeatherMap</p>
+      </div>
+
+      <div class="weather-hero">
+        <div class="flex-center gap-2 mb-3">
+          <div class="weather-temp" id="w-temp">--°</div>
+          <div>
+            <div id="w-desc" style="font-size:20px;">Loading...</div>
+            <div id="w-location" class="text-muted" style="margin-top:4px;">—</div>
+          </div>
+        </div>
+        <div class="weather-stats">
+          <div class="weather-stat"><strong id="w-humid">--%</strong>Humidity</div>
+          <div class="weather-stat"><strong id="w-wind">-- km/h</strong>Wind</div>
+          <div class="weather-stat"><strong id="w-pressure">-- hPa</strong>Pressure</div>
+          <div class="weather-stat"><strong id="w-rain">-- mm</strong>Rainfall 1h</div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-title">📅 7-Day Forecast</div>
+        <div class="forecast-row" id="forecast-row">
+          <div class="text-center text-muted" style="padding:20px;grid-column:1/-1;">Loading forecast...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🦠 Disease Outbreak Risk Index (DORI)</div>
+        <div id="risk-content">
+          <div class="text-center text-muted" style="padding:20px;">Loading risk analysis...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: IRRIGATION
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-irrigation">
+      <div class="page-header">
+        <h1>💧 Smart Irrigation Planner</h1>
+        <p>ET-based 7-day irrigation schedule optimised for your crop and soil</p>
+      </div>
+
+      <div class="grid-2 mb-3">
+        <div class="card">
+          <div class="card-title">⚙️ Parameters</div>
+          <div class="form-group">
+            <label class="form-label">Crop</label>
+            <select class="form-control" id="irr-crop">
+              <option>Tomato</option><option>Potato</option><option>Corn</option>
+              <option>Pepper</option><option>Apple</option><option>Grape</option>
+              <option>Soybean</option><option>Cotton</option><option>Wheat</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Growth Stage</label>
+            <select class="form-control" id="irr-stage">
+              <option>Seedling</option><option>Vegetative</option>
+              <option>Flowering</option><option>Fruiting</option><option>Harvest</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Soil Type</label>
+            <select class="form-control" id="irr-soil">
+              <option>Clay Loam</option><option>Loam</option><option>Sandy Loam</option>
+              <option>Clay</option><option>Sandy</option><option>Silt Loam</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Farm Area (hectares)</label>
+            <input type="number" class="form-control" id="irr-area" value="1.0" step="0.1" min="0.1">
+          </div>
+          <button class="btn btn-primary btn-full" onclick="loadIrrigation()">
+            💧 Generate Schedule
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📊 ET Summary</div>
+          <div id="irr-summary">
+            <div class="text-center text-muted" style="padding:30px;">Configure parameters and click Generate</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📅 7-Day Irrigation Schedule</div>
+        <div id="irr-schedule">
+          <div class="text-center text-muted" style="padding:30px;">Schedule will appear here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: CROP HEALTH
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-crop-health">
+      <div class="page-header">
+        <h1>🌾 Crop Health Monitor</h1>
+        <p>Composite health score from scan history, weather risk and soil moisture</p>
+      </div>
+
+      <div id="health-content">
+        <div class="text-center text-muted" style="padding:60px;">
+          <div class="spinner" style="margin:0 auto 16px;"></div>
+          Loading crop health data...
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: ENCYCLOPEDIA
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-encyclopedia">
+      <div class="page-header">
+        <h1>📚 Disease Encyclopedia</h1>
+        <p>Complete phytopathological knowledge base — 38 diseases across 14 crop species</p>
+      </div>
+
+      <div class="card mb-3">
+        <div class="flex gap-2" style="flex-wrap:wrap;align-items:center;">
+          <input type="text" class="form-control" id="enc-search"
+            placeholder="Search disease or crop..." style="flex:1;min-width:200px;"
+            oninput="filterEncyclopedia()">
+          <select class="form-control" id="enc-crop" style="width:150px;" onchange="filterEncyclopedia()">
+            <option value="">All Crops</option>
+            <option>Apple</option><option>Blueberry</option><option>Cherry</option>
+            <option>Corn</option><option>Grape</option><option>Orange</option>
+            <option>Peach</option><option>Pepper</option><option>Potato</option>
+            <option>Raspberry</option><option>Soybean</option><option>Squash</option>
+            <option>Strawberry</option><option>Tomato</option>
+          </select>
+          <select class="form-control" id="enc-severity" style="width:150px;" onchange="filterEncyclopedia()">
+            <option value="">All Severity</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="None">Healthy</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="disease-grid" id="disease-grid">
+        <div class="text-center text-muted" style="padding:40px;grid-column:1/-1;">
+          Loading encyclopedia...
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────────────────────
+         PAGE: PROFILE
+    ───────────────────────────────────────── -->
+    <div class="page" id="page-profile">
+      <div class="profile-header">
+        <div class="profile-avatar" id="profile-avatar">F</div>
+        <div>
+          <div class="profile-name"  id="profile-name">Farmer</div>
+          <div class="profile-email" id="profile-email">—</div>
+          <div class="profile-since" id="profile-since">Member since —</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">👤 Personal Info</div>
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="prof-name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="prof-phone">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password (leave blank to keep current)</label>
+            <input type="password" class="form-control" id="prof-password" placeholder="••••••••">
+          </div>
+          <button class="btn btn-primary" onclick="updateProfile()">💾 Save Changes</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🌾 Farm Profile</div>
+          <div class="form-group">
+            <label class="form-label">Farm Name</label>
+            <input type="text" class="form-control" id="prof-farm-name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Primary Crop</label>
+            <select class="form-control" id="prof-crop">
+              <option>Tomato</option><option>Potato</option><option>Corn</option>
+              <option>Pepper</option><option>Apple</option><option>Grape</option>
+              <option>Soybean</option><option>Wheat</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Soil Type</label>
+            <select class="form-control" id="prof-soil">
+              <option>Clay Loam</option><option>Loam</option><option>Sandy Loam</option>
+              <option>Clay</option><option>Sandy</option><option>Silt Loam</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Growth Stage</label>
+            <select class="form-control" id="prof-stage">
+              <option>Seedling</option><option>Vegetative</option>
+              <option>Flowering</option><option>Fruiting</option><option>Harvest</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Farm Area (hectares)</label>
+            <input type="number" class="form-control" id="prof-area" step="0.1" min="0.1">
+          </div>
+          <button class="btn btn-primary" onclick="updateProfile()">💾 Save Farm</button>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-title">📊 Your Statistics</div>
+        <div class="stats-grid" id="profile-stats">
+          <div class="text-center text-muted" style="padding:20px;grid-column:1/-1;">Loading stats...</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     DISEASE DETAIL MODAL
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="disease-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-disease-name">Disease Name</div>
+    <div style="font-size:13px;color:var(--text-muted);font-style:italic;margin-bottom:16px;" id="modal-sci-name">—</div>
+
+    <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+      <span class="severity-badge" id="modal-severity-badge">—</span>
+      <span style="font-size:13px;color:var(--text-muted);">Crop: <strong id="modal-crop">—</strong></span>
+      <span style="font-size:13px;color:var(--text-muted);">Favours: <strong id="modal-conditions">—</strong></span>
+    </div>
+
+    <p style="font-size:14px;line-height:1.7;color:var(--text-muted);margin-bottom:16px;" id="modal-desc">—</p>
+
+    <div class="card-title">🔍 Symptoms</div>
+    <ul class="symptoms-list mb-2" id="modal-symptoms"></ul>
+
+    <div class="card-title">🌿 Organic Treatment</div>
+    <p style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:16px;" id="modal-organic">—</p>
+
+    <div class="card-title">🧪 Chemical Treatment</div>
+    <p style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:16px;" id="modal-chemical">—</p>
+
+    <div class="card-title">🛡️ Prevention</div>
+    <p style="font-size:14px;color:var(--text-muted);line-height:1.7;margin-bottom:20px;" id="modal-prevention">—</p>
+
+    <button class="btn btn-outline btn-full" onclick="closeModal()">✕ Close</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  PhytoSense — Frontend Application
+// ============================================================
+
+// Auto-detect API URL: works locally, in Codespaces, and in production
+const API = (() => {
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:5000/api';
+  if (h.includes('.app.github.dev')) {
+    // Codespaces: replace port suffix with 5000
+    const base = h.replace(/-\d+\.app\.github\.dev$/, '-5000.app.github.dev');
+    return `${window.location.protocol}//${base}/api`;
+  }
+  return 'https://plant-disease-detection-system-uvik.onrender.com/api';
+})();
+// Play faahh!! rejection sound
+function playRejectionSound() {
+  try {
+    const audio = new Audio('data:audio/mpeg;base64,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');
+    audio.volume = 1.0;
+    audio.play().catch(e => console.log('Audio play failed:', e));
+  } catch(e) { console.log('Audio error:', e); }
+}
+
+let TOKEN    = localStorage.getItem('phyto_token') || '';
+let USER     = JSON.parse(localStorage.getItem('phyto_user') || 'null');
+let currentPage    = 'dashboard';
+let selectedFile   = null;
+let cameraStream   = null;
+let allDiseases    = [];
+let historyPage    = 1;
+
+// ── Auto login if token exists ──────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (TOKEN && USER) {
+    showApp();
+    loadDashboard();
+  }
+  setupDragDrop();
+});
+
+// ── API helper ───────────────────────────────────────────────
+async function api(method, path, body = null, isForm = false) {
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${TOKEN}` },
+  };
+  if (body && !isForm) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  } else if (body && isForm) {
+    opts.body = body;
+  }
+  const res = await fetch(`${API}${path}`, opts);
+  if (res.status === 401) { doLogout(); return null; }
+  return res.json();
+}
+
+// ── Auth ─────────────────────────────────────────────────────
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) return toast('Please fill in all fields', 'error');
+  showLoading('Signing in...');
+  try {
+    const res = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Login failed', 'error'); return; }
+    TOKEN = data.access_token;
+    USER  = data.user;
+    localStorage.setItem('phyto_token', TOKEN);
+    localStorage.setItem('phyto_user',  JSON.stringify(USER));
+    showApp();
+    loadDashboard();
+    toast(`Welcome back, ${USER.full_name}! 🌿`, 'success');
+  } catch(e) { toast('Cannot connect to server', 'error'); }
+  finally { hideLoading(); }
+}
+
+async function doRegister() {
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const phone    = document.getElementById('reg-phone').value;
+  const crop     = document.getElementById('reg-crop').value;
+  const area     = parseFloat(document.getElementById('reg-area').value) || 1.0;
+  if (!name || !email || !password) return toast('Please fill in required fields', 'error');
+  showLoading('Creating your account...');
+  try {
+    const res = await fetch(`${API}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name: name, email, password, phone, primary_crop: crop, area_hectares: area }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || 'Registration failed', 'error'); return; }
+    TOKEN = data.access_token;
+    USER  = data.user;
+    localStorage.setItem('phyto_token', TOKEN);
+    localStorage.setItem('phyto_user',  JSON.stringify(USER));
+    showApp();
+    loadDashboard();
+    toast(`Welcome to PhytoSense, ${USER.full_name}! 🌱`, 'success');
+  } catch(e) { toast('Cannot connect to server', 'error'); }
+  finally { hideLoading(); }
+}
+
+function doLogout() {
+  TOKEN = ''; USER = null;
+  localStorage.removeItem('phyto_token');
+  localStorage.removeItem('phyto_user');
+  stopCamera();
+  document.getElementById('app-section').classList.add('hidden');
+  document.getElementById('auth-section').classList.remove('hidden');
+  showPage('login-page');
+}
+
+// ── Show/hide app ────────────────────────────────────────────
+function showApp() {
+  document.getElementById('auth-section').classList.add('hidden');
+  document.getElementById('app-section').classList.remove('hidden');
+  updateSidebarUser();
+}
+
+function showPage(id) {
+  document.querySelectorAll('.auth-page').forEach(p => p.classList.add('hidden'));
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('hidden');
+}
+
+// ── Navigation ───────────────────────────────────────────────
+function navigateTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  const pageEl = document.getElementById(`page-${page}`);
+  if (pageEl) pageEl.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(`'${page}'`))
+      n.classList.add('active');
+  });
+
+  const titles = {
+    dashboard:'Dashboard', scanner:'Leaf Scanner', camera:'Camera Scan',
+    history:'Scan History', weather:'Climate & Risk', irrigation:'Irrigation Planner',
+    'crop-health':'Crop Health', encyclopedia:'Encyclopedia', profile:'Profile & Farm',
+  };
+  document.getElementById('topbar-title').textContent = titles[page] || page;
+  currentPage = page;
+
+  if (page === 'dashboard')    loadDashboard();
+  if (page === 'history')      loadHistory();
+  if (page === 'weather')      loadWeather();
+  if (page === 'irrigation')   loadIrrigation();
+  if (page === 'crop-health')  loadCropHealth();
+  if (page === 'encyclopedia') loadEncyclopedia();
+  if (page === 'profile')      loadProfile();
+}
+
+// ── Sidebar user ─────────────────────────────────────────────
+function updateSidebarUser() {
+  if (!USER) return;
+  document.getElementById('sidebar-name').textContent  = USER.full_name;
+  document.getElementById('sidebar-email').textContent = USER.email;
+  document.getElementById('sidebar-avatar').textContent = USER.full_name[0].toUpperCase();
+  document.getElementById('dash-name').textContent = USER.full_name.split(' ')[0];
+}
+
+// ── Dashboard ────────────────────────────────────────────────
+async function loadDashboard() {
+  updateSidebarUser();
+  try {
+    const [stats, weather, risk] = await Promise.all([
+      api('GET', '/user/stats'),
+      api('GET', '/weather'),
+      api('GET', '/climate/risk'),
+    ]);
+
+    if (stats) {
+      document.getElementById('stat-total').textContent    = stats.total_scans;
+      document.getElementById('stat-healthy').textContent  = stats.health_rate + '%';
+      document.getElementById('stat-diseased').textContent = stats.diseased_scans;
+      document.getElementById('stat-conf').textContent     = stats.avg_confidence + '%';
+      document.getElementById('stat-month').textContent    = `${stats.scans_this_month} this month`;
+      document.getElementById('stat-top-disease').textContent = stats.top_disease || 'None detected';
+      document.getElementById('history-badge').textContent = stats.total_scans;
+    }
+
+    if (weather && weather.current) {
+      const c = weather.current;
+      document.getElementById('dash-weather-content').innerHTML = `
+        <div style="font-size:42px;font-weight:300;">${Math.round(c.temperature)}°C</div>
+        <div style="color:var(--text-muted);margin-top:4px;">${c.description}</div>
+        <div style="display:flex;gap:20px;margin-top:12px;">
+          <span style="font-size:13px;color:var(--text-muted);">💧 ${c.humidity}% humidity</span>
+          <span style="font-size:13px;color:var(--text-muted);">🌬️ ${c.wind_speed} m/s wind</span>
+        </div>
+        ${c.location ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;">📍 ${c.location}</div>` : ''}
+      `;
+    }
+
+    if (risk) {
+      const r = risk.risk;
+      const pct = r.dori_score;
+      document.getElementById('dash-risk-content').innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:28px;font-weight:700;">${pct}/100</span>
+          <span style="padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;background:${r.color}22;color:${r.color};">${r.risk_level}</span>
+        </div>
+        <div class="risk-meter">
+          <div class="risk-pointer" style="left:${pct}%;"></div>
+        </div>
+        <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">${r.action}</p>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">🔭 Scout: ${r.scouting_freq}</div>
+      `;
+    }
+
+    const recents = await api('GET', '/history?per_page=4');
+    if (recents && recents.scans && recents.scans.length > 0) {
+      document.getElementById('dash-recent-scans').innerHTML = recents.scans.map(s =>
+        `<div class="history-item" onclick="navigateTo('history')">
+          <div class="history-thumb">${s.is_healthy ? '✅' : '⚠️'}</div>
+          <div style="flex:1;">
+            <div class="history-disease">${s.disease_name}</div>
+            <div class="history-meta">${s.crop_name} · ${new Date(s.scanned_at).toLocaleDateString()}</div>
+          </div>
+          <div class="history-conf">
+            <div class="pct">${Math.round(s.confidence * 100)}%</div>
+            <div style="font-size:11px;color:var(--text-muted);">confidence</div>
+          </div>
+        </div>`
+      ).join('');
+    }
+  } catch(e) { console.error('Dashboard error:', e); }
+}
+
+// ── Scanner ──────────────────────────────────────────────────
+function setupDragDrop() {
+  const zone = document.getElementById('upload-zone');
+  if (!zone) return;
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', ()  => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  });
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('image-preview').src = e.target.result;
+    document.getElementById('image-preview-wrap').classList.remove('hidden');
+    document.getElementById('result-card').classList.remove('show');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearScan() {
+  selectedFile = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('image-preview-wrap').classList.add('hidden');
+  document.getElementById('result-card').classList.remove('show');
+}
+
+async function runScan() {
+  if (!selectedFile) return toast('Please select a leaf image first', 'error');
+  showLoading('Running CNN inference...');
+  try {
+    const form = new FormData();
+    form.append('image', selectedFile);
+    const data = await api('POST', '/predict', form, true);
+    if (!data) return;
+    if (data.error === 'not_a_plant') {
+      playRejectionSound();
+      toast(`🚫 Not a plant image! Detected: "${data.detected_as}". Please upload a photo of a plant leaf or crop.`, 'error');
+      return;
+    }
+    if (data.error) { toast(data.error, 'error'); return; }
+    displayResult(data);
+    toast('Analysis complete! 🔬', 'success');
+  } catch(e) { toast('Scan failed. Check server connection.', 'error'); }
+  finally { hideLoading(); }
+}
+
+function displayResult(data) {
+  const p    = data.prediction;
+  const info = p.disease_info;
+  const card = document.getElementById('result-card');
+
+  document.getElementById('result-image').src        = URL.createObjectURL(selectedFile);
+  document.getElementById('result-disease').textContent = p.disease_name;
+  document.getElementById('result-crop').textContent    = `Crop: ${p.crop_name}`;
+  document.getElementById('result-conf-text').textContent = `Confidence: ${Math.round(p.confidence*100)}%`;
+
+  const sev = document.getElementById('result-severity');
+  sev.textContent = p.severity.charAt(0).toUpperCase() + p.severity.slice(1);
+  sev.className = `severity-badge severity-${p.severity}`;
+
+  setTimeout(() => {
+    document.getElementById('conf-fill').style.width = Math.round(p.confidence*100) + '%';
+  }, 100);
+
+  if (info) {
+    const sl = document.getElementById('symptoms-list');
+    sl.innerHTML = (info.symptoms || []).map(s => `<li>${s}</li>`).join('');
+    document.getElementById('organic-text').textContent   = info.organic_treatment  || '—';
+    document.getElementById('chemical-text').textContent  = info.chemical_treatment || '—';
+    document.getElementById('prevention-text').textContent = info.prevention        || '—';
+  }
+
+  const top3 = document.getElementById('top3-list');
+  top3.innerHTML = (p.top3 || []).map((t, i) =>
+    `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:18px;width:28px;text-align:center;">${['🥇','🥈','🥉'][i]}</span>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;">${t.disease}</div>
+        <div class="progress mt-1"><div class="progress-bar" style="width:${Math.round(t.confidence*100)}%"></div></div>
+      </div>
+      <span style="font-size:14px;font-weight:700;color:var(--green-accent);">${Math.round(t.confidence*100)}%</span>
+    </div>`
+  ).join('');
+
+  card.classList.add('show');
+  document.getElementById('tab-symptoms').click && switchTab('symptoms');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.treatment-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.treatment-content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.treatment-tab').forEach(t => {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes(name))
+      t.classList.add('active');
+  });
+  const el = document.getElementById(`tab-${name}`);
+  if (el) el.classList.add('active');
+}
+
+// ── Camera ───────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+    document.getElementById('camera-video').srcObject = cameraStream;
+    document.getElementById('start-camera-btn').classList.add('hidden');
+    document.getElementById('capture-btn').classList.remove('hidden');
+    document.getElementById('stop-camera-btn').classList.remove('hidden');
+    toast('Camera started — point at a leaf 🌿', 'info');
+  } catch(e) { toast('Camera access denied or not available', 'error'); }
+}
+
+async function captureAndScan() {
+  const video  = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const b64 = canvas.toDataURL('image/jpeg', 0.9);
+  showLoading('Analysing captured image...');
+  try {
+    const data = await api('POST', '/predict/camera', { image_base64: b64 });
+    if (!data) return;
+    if (data.error === 'not_a_plant') {
+      playRejectionSound();
+      toast(`🚫 Not a plant image! Detected: "${data.detected_as}". Please point camera at a plant leaf or crop.`, 'error');
+      return;
+    }
+    if (data.error) { toast(data.error, 'error'); return; }
+    const p = data.prediction;
+    document.getElementById('camera-result-image').src = b64;
+    document.getElementById('camera-result-disease').textContent = p.disease_name;
+    document.getElementById('camera-result-crop').textContent    = `Crop: ${p.crop_name}`;
+    document.getElementById('camera-conf-text').textContent = `Confidence: ${Math.round(p.confidence*100)}%`;
+    const sev = document.getElementById('camera-result-severity');
+    sev.textContent = p.severity.charAt(0).toUpperCase() + p.severity.slice(1);
+    sev.className = `severity-badge severity-${p.severity}`;
+    setTimeout(() => {
+      document.getElementById('camera-conf-fill').style.width = Math.round(p.confidence*100) + '%';
+    }, 100);
+    if (p.disease_info) {
+      document.getElementById('camera-treatment').innerHTML =
+        `<strong>🌿 Organic:</strong> ${p.disease_info.organic_treatment || '—'}`;
+    }
+    document.getElementById('camera-result-card').classList.add('show');
+    toast('Capture analysed! 📷', 'success');
+  } catch(e) { toast('Analysis failed', 'error'); }
+  finally { hideLoading(); }
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('camera-video').srcObject = null;
+  document.getElementById('start-camera-btn').classList.remove('hidden');
+  document.getElementById('capture-btn').classList.add('hidden');
+  document.getElementById('stop-camera-btn').classList.add('hidden');
+}
+
+// ── History ──────────────────────────────────────────────────
+async function loadHistory(page = 1) {
+  historyPage = page;
+  const crop     = document.getElementById('filter-crop').value;
+  const severity = document.getElementById('filter-severity').value;
+  let url = `/history?page=${page}&per_page=10`;
+  if (crop)     url += `&crop=${crop}`;
+  if (severity) url += `&severity=${severity}`;
+  const data = await api('GET', url);
+  if (!data) return;
+  const container = document.getElementById('history-list');
+  if (!data.scans || data.scans.length === 0) {
+    container.innerHTML = '<div class="text-center text-muted" style="padding:40px;">No scans found. Try adjusting filters.</div>';
+    return;
+  }
+  container.innerHTML = data.scans.map(s => `
+    <div class="history-item">
+      <div class="history-thumb">${s.is_healthy ? '✅' : '⚠️'}</div>
+      <div style="flex:1;">
+        <div class="history-disease">${s.disease_name}</div>
+        <div class="history-meta">
+          ${s.crop_name} · ${s.severity} severity ·
+          ${new Date(s.scanned_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}
+        </div>
+        ${s.weather.temperature ? `<div class="history-meta">🌡️ ${Math.round(s.weather.temperature)}°C · 💧 ${s.weather.humidity}% humidity</div>` : ''}
+      </div>
+      <div class="history-conf">
+        <div class="pct">${Math.round(s.confidence*100)}%</div>
+        <div style="font-size:11px;color:var(--text-muted);">confidence</div>
+        <button class="btn btn-outline btn-sm mt-1" onclick="deleteScan(${s.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+
+  const pg = document.getElementById('pagination-wrap');
+  pg.innerHTML = '';
+  if (data.pages > 1) {
+    for (let i = 1; i <= data.pages; i++) {
+      pg.innerHTML += `<button class="btn ${i===page?'btn-primary':'btn-outline'} btn-sm" onclick="loadHistory(${i})">${i}</button>`;
+    }
+  }
+}
+
+async function deleteScan(id) {
+  if (!confirm('Delete this scan?')) return;
+  const data = await api('DELETE', `/history/${id}`);
+  if (data && data.message) { toast('Scan deleted', 'success'); loadHistory(historyPage); }
+}
+
+// ── Weather ──────────────────────────────────────────────────
+async function loadWeather() {
+  const [weather, risk] = await Promise.all([
+    api('GET', '/weather'),
+    api('GET', '/climate/risk'),
+  ]);
+
+  if (weather && weather.current) {
+    const c = weather.current;
+    document.getElementById('w-temp').textContent     = `${Math.round(c.temperature)}°`;
+    document.getElementById('w-desc').textContent     = c.description;
+    document.getElementById('w-location').textContent = c.location || '—';
+    document.getElementById('w-humid').textContent    = `${c.humidity}%`;
+    document.getElementById('w-wind').textContent     = `${c.wind_speed} m/s`;
+    document.getElementById('w-pressure').textContent = `${c.pressure} hPa`;
+    document.getElementById('w-rain').textContent     = `${c.rainfall_1h} mm`;
+  }
+
+  if (weather && weather.forecast) {
+    const icons = {'01d':'☀️','02d':'⛅','03d':'🌥️','04d':'☁️','09d':'🌧️','10d':'🌦️','11d':'⛈️','13d':'🌨️','50d':'🌫️'};
+    document.getElementById('forecast-row').innerHTML = weather.forecast.slice(0,7).map(f =>
+      `<div class="forecast-day">
+        <div class="day">${f.date.length > 6 ? new Date(f.date).toLocaleDateString('en',{weekday:'short'}) : f.date}</div>
+        <div class="icon">${icons[f.icon] || '🌤️'}</div>
+        <div class="temp">${Math.round(f.temp_max)}° / ${Math.round(f.temp_min)}°</div>
+        <div class="rain">${f.rainfall_mm > 0 ? `💧 ${f.rainfall_mm}mm` : '—'}</div>
+      </div>`
+    ).join('');
+  }
+
+  if (risk) {
+    const r = risk.risk;
+    document.getElementById('risk-content').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-size:42px;font-weight:700;">${r.dori_score}<span style="font-size:20px;color:var(--text-muted);">/100</span></div>
+          <div style="font-size:12px;color:var(--text-muted);">Disease Outbreak Risk Index</div>
+        </div>
+        <span style="padding:10px 20px;border-radius:20px;font-size:16px;font-weight:700;background:${r.color}22;color:${r.color};">${r.risk_level}</span>
+      </div>
+      <div class="risk-meter"><div class="risk-pointer" style="left:${r.dori_score}%;"></div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;">
+        <div class="card"><div style="font-size:11px;color:var(--text-muted);">Temperature</div><div style="font-size:20px;font-weight:700;">${r.components.temperature_score}/30</div></div>
+        <div class="card"><div style="font-size:11px;color:var(--text-muted);">Humidity</div><div style="font-size:20px;font-weight:700;">${r.components.humidity_score}/40</div></div>
+        <div class="card"><div style="font-size:11px;color:var(--text-muted);">Rainfall</div><div style="font-size:20px;font-weight:700;">${r.components.rainfall_score}/30</div></div>
+      </div>
+      <div class="card mt-2"><p style="font-size:14px;color:var(--text-muted);">⚡ ${r.action}</p></div>
+      ${r.likely_pathogens && r.likely_pathogens.length > 0 ? `
+        <div class="card-title mt-2">🦠 Likely Pathogens</div>
+        ${r.likely_pathogens.map(p =>
+          `<div style="padding:10px;background:var(--bg-card2);border-radius:8px;margin-bottom:8px;">
+            <div style="font-size:14px;font-weight:600;">${p.name}</div>
+            <div style="font-size:12px;color:var(--text-muted);">Risk: ${p.risk} · Crops: ${p.crops.join(', ')}</div>
+          </div>`
+        ).join('')}
+      ` : ''}
+    `;
+  }
+}
+
+// ── Irrigation ───────────────────────────────────────────────
+async function loadIrrigation() {
+  const crop  = document.getElementById('irr-crop').value;
+  const stage = document.getElementById('irr-stage').value;
+  const soil  = document.getElementById('irr-soil').value;
+  const area  = parseFloat(document.getElementById('irr-area').value) || 1.0;
+  showLoading('Calculating ET-based schedule...');
+  try {
+    const data = await api('POST', '/irrigation/predict', {
+      crop, growth_stage: stage, soil_type: soil, area_ha: area,
+    });
+    if (!data || !data.schedule) return;
+    const s = data.schedule;
+    document.getElementById('irr-summary').innerHTML = `
+      <div class="stats-grid" style="grid-template-columns:1fr 1fr;">
+        <div><div style="font-size:11px;color:var(--text-muted);">Crop ET (ETc)</div><div style="font-size:24px;font-weight:700;">${s.etc_mm_day} mm/day</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);">Crop Coefficient (Kc)</div><div style="font-size:24px;font-weight:700;">${s.kc}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);">Net Daily Demand</div><div style="font-size:24px;font-weight:700;">${s.net_daily_mm} mm</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);">Weekly Volume</div><div style="font-size:24px;font-weight:700;">${s.weekly_volume_m3} m³</div></div>
+      </div>
+      <div class="card mt-2" style="font-size:13px;color:var(--text-muted);">
+        ⏰ Optimal time: ${s.optimal_time}
+      </div>
+    `;
+    document.getElementById('irr-schedule').innerHTML = s.schedule.map(d => `
+      <div class="irrigation-day">
+        <div class="irr-day-name">${d.day}<div style="font-size:11px;color:var(--text-muted);">${d.date}</div></div>
+        <div class="irr-bar-wrap">
+          <div class="irr-bar" style="width:${d.irrigate ? Math.min(100,(d.volume_m3/s.weekly_volume_m3*7)*100) : 0}%"></div>
+        </div>
+        <div class="irr-volume">${d.volume_m3 > 0 ? `${d.volume_m3} m³` : '—'}</div>
+        <div class="irr-status">
+          <span class="severity-badge ${d.irrigate ? 'severity-medium' : 'severity-healthy'}" style="font-size:11px;">
+            ${d.irrigate ? '💧 Irrigate' : '✅ Skip'}
+          </span>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) { toast('Failed to load irrigation data', 'error'); }
+  finally { hideLoading(); }
+}
+
+// ── Crop Health ───────────────────────────────────────────────
+async function loadCropHealth() {
+  const data = await api('GET', '/crop/health');
+  if (!data) return;
+  const h = data.health;
+  const r = data.risk;
+  document.getElementById('health-content').innerHTML = `
+    <div style="text-align:center;padding:32px;background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border);margin-bottom:24px;">
+      <div style="font-size:80px;font-weight:300;color:${h.color};">${h.score}</div>
+      <div style="font-size:24px;font-weight:700;color:${h.color};margin-bottom:8px;">${h.grade}</div>
+      <div style="font-size:14px;color:var(--text-muted);max-width:500px;margin:0 auto;">${h.description}</div>
+      <div class="progress mt-2" style="max-width:300px;margin:16px auto 0;height:10px;">
+        <div class="progress-bar" style="width:${h.score}%;"></div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(74,140,74,0.2);">🔬</div>
+        <div class="stat-value">${data.scan_summary.total}</div>
+        <div class="stat-label">Total Scans</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(76,175,80,0.2);">✅</div>
+        <div class="stat-value text-success">${data.scan_summary.healthy}</div>
+        <div class="stat-label">Healthy</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(229,57,53,0.2);">⚠️</div>
+        <div class="stat-value text-danger">${data.scan_summary.diseased}</div>
+        <div class="stat-label">Diseased</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(251,140,0,0.2);">🦠</div>
+        <div class="stat-value" style="color:${r.color};">${r.risk_level}</div>
+        <div class="stat-label">Outbreak Risk</div>
+      </div>
+    </div>
+
+    ${data.scan_summary.top_issues.length > 0 ? `
+      <div class="card mt-3">
+        <div class="card-title">🔥 Top Issues Detected</div>
+        ${data.scan_summary.top_issues.map(i =>
+          `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:16px;">⚠️</span>
+            <div style="flex:1;">${i.disease}</div>
+            <span style="font-size:13px;font-weight:700;color:var(--danger);">${i.count}x detected</span>
+          </div>`
+        ).join('')}
+      </div>
+    ` : ''}
+
+    <div class="card mt-3">
+      <div class="card-title">🌾 Farm Details</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;">
+        <div><div style="font-size:11px;color:var(--text-muted);">Farm Name</div><div style="font-weight:600;">${data.farm.name}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);">Primary Crop</div><div style="font-weight:600;">${data.farm.crop}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);">Growth Stage</div><div style="font-weight:600;">${data.farm.growth_stage}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);">Area</div><div style="font-weight:600;">${data.farm.area_ha} ha</div></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Encyclopedia ─────────────────────────────────────────────
+async function loadEncyclopedia() {
+  if (allDiseases.length > 0) { renderDiseases(allDiseases); return; }
+  const data = await api('GET', '/disease');
+  if (!data) return;
+  allDiseases = data.diseases || [];
+  renderDiseases(allDiseases);
+}
+
+function filterEncyclopedia() {
+  const search   = document.getElementById('enc-search').value.toLowerCase();
+  const crop     = document.getElementById('enc-crop').value.toLowerCase();
+  const severity = document.getElementById('enc-severity').value;
+  const filtered = allDiseases.filter(d => {
+    const matchSearch   = !search   || d.name.toLowerCase().includes(search) || d.crop.toLowerCase().includes(search);
+    const matchCrop     = !crop     || d.crop.toLowerCase().includes(crop);
+    const matchSeverity = !severity || d.severity_class === severity;
+    return matchSearch && matchCrop && matchSeverity;
+  });
+  renderDiseases(filtered);
+}
+
+function renderDiseases(diseases) {
+  const sevColors = { High:'var(--danger)', Medium:'var(--warning)', Low:'var(--info)', None:'var(--green-accent)' };
+  document.getElementById('disease-grid').innerHTML = diseases.map(d =>
+    `<div class="disease-card" onclick="showDiseaseModal('${encodeURIComponent(d.name)}')">
+      <div class="disease-card-crop">${d.crop}</div>
+      <div class="disease-card-name">${d.name.split(' — ')[1] || d.name}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+        <span style="font-size:11px;padding:3px 10px;border-radius:20px;background:${sevColors[d.severity_class] || '#888'}22;color:${sevColors[d.severity_class] || '#888'};">
+          ${d.severity_class === 'None' ? '✅ Healthy' : `⚠️ ${d.severity_class} Risk`}
+        </span>
+      </div>
+    </div>`
+  ).join('') || '<div class="text-center text-muted" style="padding:40px;grid-column:1/-1;">No diseases match your filter</div>';
+}
+
+async function showDiseaseModal(encodedName) {
+  const name = decodeURIComponent(encodedName);
+  const data = await api('GET', `/disease/${encodeURIComponent(name)}`);
+  if (!data || !data.info) return;
+  const info = data.info;
+  const sevColors = { High:'var(--danger)', Medium:'var(--warning)', None:'var(--green-accent)' };
+  document.getElementById('modal-disease-name').textContent  = name;
+  document.getElementById('modal-sci-name').textContent      = info.scientific_name || '—';
+  document.getElementById('modal-crop').textContent          = info.crop || '—';
+  document.getElementById('modal-conditions').textContent    = info.favorable_conditions || '—';
+  document.getElementById('modal-desc').textContent          = info.description || '—';
+  document.getElementById('modal-organic').textContent       = info.organic_treatment || '—';
+  document.getElementById('modal-chemical').textContent      = info.chemical_treatment || '—';
+  document.getElementById('modal-prevention').textContent    = info.prevention || '—';
+  const sb = document.getElementById('modal-severity-badge');
+  sb.textContent = info.severity_class === 'None' ? '✅ Healthy' : `⚠️ ${info.severity_class} Risk`;
+  sb.style.background = (sevColors[info.severity_class] || '#888') + '22';
+  sb.style.color = sevColors[info.severity_class] || '#888';
+  document.getElementById('modal-symptoms').innerHTML =
+    (info.symptoms || []).map(s => `<li>${s}</li>`).join('');
+  document.getElementById('disease-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('disease-modal').classList.remove('show');
+}
+
+// ── Profile ───────────────────────────────────────────────────
+async function loadProfile() {
+  const data = await api('GET', '/user/profile');
+  if (!data || !data.user) return;
+  const u = data.user;
+  const f = u.farm || {};
+  document.getElementById('profile-name').textContent  = u.full_name;
+  document.getElementById('profile-email').textContent = u.email;
+  document.getElementById('profile-since').textContent = `Member since ${new Date(u.created_at).toLocaleDateString('en-IN',{month:'long',year:'numeric'})}`;
+  document.getElementById('profile-avatar').textContent = u.full_name[0].toUpperCase();
+  document.getElementById('prof-name').value  = u.full_name;
+  document.getElementById('prof-phone').value = u.phone || '';
+  document.getElementById('prof-farm-name').value = f.farm_name || '';
+  document.getElementById('prof-area').value  = f.area_hectares || 1;
+  const setSelect = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) [...el.options].forEach(o => { if (o.value === val) o.selected = true; });
+  };
+  setSelect('prof-crop',  f.primary_crop);
+  setSelect('prof-soil',  f.soil_type);
+  setSelect('prof-stage', f.growth_stage);
+  loadProfileStats();
+}
+
+async function loadProfileStats() {
+  const data = await api('GET', '/user/stats');
+  if (!data) return;
+  document.getElementById('profile-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value">${data.total_scans}</div>
+      <div class="stat-label">Total Scans</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value text-success">${data.health_rate}%</div>
+      <div class="stat-label">Health Rate</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${data.avg_confidence}%</div>
+      <div class="stat-label">Avg Confidence</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${data.days_active}</div>
+      <div class="stat-label">Days Active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${data.scans_this_month}</div>
+      <div class="stat-label">This Month</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${data.top_crop || '—'}</div>
+      <div class="stat-label">Top Crop</div>
+    </div>
+  `;
+}
+
+async function updateProfile() {
+  const body = {
+    full_name:    document.getElementById('prof-name').value,
+    phone:        document.getElementById('prof-phone').value,
+    farm_name:    document.getElementById('prof-farm-name').value,
+    primary_crop: document.getElementById('prof-crop').value,
+    soil_type:    document.getElementById('prof-soil').value,
+    growth_stage: document.getElementById('prof-stage').value,
+    area_hectares: parseFloat(document.getElementById('prof-area').value) || 1.0,
+  };
+  const pw = document.getElementById('prof-password').value;
+  if (pw) body.password = pw;
+  const data = await api('PUT', '/user/profile', body);
+  if (data && data.message) {
+    toast('Profile updated successfully ✅', 'success');
+    USER = data.user;
+    localStorage.setItem('phyto_user', JSON.stringify(USER));
+    updateSidebarUser();
+  }
+}
+
+// ── UI Helpers ────────────────────────────────────────────────
+function showLoading(text = 'Loading...') {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${type==='success'?'✅':type==='error'?'❌':'ℹ️'}</span><span class="toast-msg">${msg}</span>`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+// Close modal on overlay click
+document.getElementById('disease-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+
+<!-- ── PhytoSense Chatbot ── -->
+<button id="chat-fab" onclick="toggleChat()" title="Chat with PhytoSense AI">🌿</button>
+
+<div id="chat-window">
+  <div id="chat-header">
+    <div id="chat-header-left">
+      <div id="chat-header-avatar">🌿</div>
+      <div>
+        <div id="chat-header-title">PhytoSense Assistant</div>
+        <div id="chat-header-sub">Plant disease expert</div>
+      </div>
+    </div>
+    <button id="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input-row">
+    <input id="chat-input" type="text" placeholder="Ask about plant diseases..."
+      onkeydown="if(event.key==='Enter')sendChat()"/>
+    <button id="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<script>
+// ── Chatbot logic ────────────────────────────────────────
+let chatOpen = false;
+let chatHistory = [];
+let chatGreeted = false;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  const win = document.getElementById('chat-window');
+  win.classList.toggle('open', chatOpen);
+  if (chatOpen && !chatGreeted) {
+    chatGreeted = true;
+    setTimeout(() => {
+      addBotMessage("👋 Hi! I'm your PhytoSense plant disease assistant. I can help you with:", [
+        "What causes tomato blight?",
+        "How to treat apple scab?",
+        "Is my plant healthy?",
+        "Crop disease prevention tips"
+      ]);
+    }, 300);
+  }
+  if (chatOpen) {
+    setTimeout(() => document.getElementById('chat-input').focus(), 100);
+  }
+}
+
+function addBotMessage(text, suggestions=[]) {
+  const msgs = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble bot';
+  bubble.innerHTML = text.replace(/\n/g, '<br>');
+  msgs.appendChild(bubble);
+
+  if (suggestions.length > 0) {
+    const sugDiv = document.createElement('div');
+    sugDiv.className = 'chat-suggestions';
+    suggestions.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'chat-suggestion';
+      btn.textContent = s;
+      btn.onclick = () => { sendChatMessage(s); };
+      sugDiv.appendChild(btn);
+    });
+    msgs.appendChild(sugDiv);
+  }
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addUserMessage(text) {
+  const msgs = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble user';
+  bubble.textContent = text;
+  msgs.appendChild(bubble);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addTypingIndicator() {
+  const msgs = document.getElementById('chat-messages');
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble typing';
+  bubble.id = 'typing-indicator';
+  bubble.textContent = '🌿 Thinking...';
+  msgs.appendChild(bubble);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  sendChatMessage(text);
+}
+
+async function sendChatMessage(text) {
+  addUserMessage(text);
+  addTypingIndicator();
+
+  // Build conversation history for context
+  chatHistory.push({ role: 'user', content: text });
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${TOKEN}`
+      },
+      body: JSON.stringify({ message: text, history: chatHistory.slice(-10) })
+    });
+
+    const data = await response.json();
+    removeTypingIndicator();
+
+    if (data.reply) {
+      chatHistory.push({ role: 'assistant', content: data.reply });
+      addBotMessage(data.reply, data.suggestions || []);
+    } else {
+      addBotMessage("Sorry, I could not get a response. Please try again.");
+    }
+  } catch(e) {
+    removeTypingIndicator();
+    addBotMessage("Connection error. Make sure the server is running.");
+  }
+}
+</script>
+
+</body>
+</html>
+
