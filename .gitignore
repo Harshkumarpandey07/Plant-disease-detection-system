@@ -1,0 +1,24 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+.venv/
+*.egg-info/
+
+# Database
+*.db
+
+# Uploads
+backend/static/uploads/*
+!backend/static/uploads/.gitkeep
+
+# Model (too large for GitHub - use Git LFS or download script)
+# backend/model/plant_cnn_fixed.keras
+
+# VS Code
+.vscode/
+
+# Node
+node_modules/
